@@ -5,8 +5,8 @@ const help = () => {
      ~~  | __ |   /     | | |   | _|| _|   ~~
       ~  |_||_|_|_\\     |_| |_|_|___|___|  ~
 
-    ~~               HR Tree               ~~
-    ~~    \`help()\` — print this manual     ~~
+     ~~              HR Tree               ~~
+     ~~    \`help()\` — print this manual    ~~
 
 
   `

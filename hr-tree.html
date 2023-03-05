@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" id="html" class="dark-mode">
+<html lang="en" id="html" class="dark-mode console-hide">
   <head>
     <meta charset="UTF-8">
     <title>Ehpelsuw - HR Tree</title>
@@ -13,11 +13,9 @@
 
   <body>
     <header id="header-block" class="region flex">
-      <div class="logo"
-           id="logo"
-           onclick="goHome()"></div>
+      <div id="logo" class="logo"></div>
 
-      <!-- Make sure the form has browser autocomplete off -->
+      <!-- make sure the form has browser autocomplete off -->
       <form autocomplete="off" action="hr-tree.html" class="autocomplete-form flex">
         <div class="autocomplete">
           <input id="myInput"
@@ -25,7 +23,8 @@
                  type="text"
                  name="person"
                  placeholder="Start typing any part of a name"
-                 onchange="showOptions()">
+                 onchange="showOptions()"
+                 onclick="clearOverlays()">
         </div>
         <input type="submit" value="" class="autocomplete-button">
       </form>
@@ -57,26 +56,31 @@
         </div>
       </div>
     </div>
-    <div id="console" class="console"></div>
+
+    <div id="modal-curtain" class="modal-curtain"></div>
+
+    <div id="console" class="console">
+      <div id="console-title" class="console-title">
+        <div id="console-close" class="console-close"></div>
+      </div>
+      <div id="console-body" class="console-body"></div>
+    </div>
   </body>
 
   <script>
-    // Initialize and render page
-    // puts `EMPLOYEE` and `EMPLOYEES` in global scope
+    // initialize and render page
     Page.init(org.employees);
 
-    // Home logo
-    const goHome = () => {
-      window.location.replace("hr-tree.html")
-    }
+    // hydrate autocomplete
+    autocomplete( getElId( "myInput" ), EMPLOYEES );
 
-    // Instrument autocomplete
+    // instrument autocomplete
     const showOptions = () => {
       var inp = getElId("myInput")
       autocomplete(inp, EMPLOYEES)
     }
-
-    // Hydrate autocomplete
-    autocomplete( getElId( "myInput" ), EMPLOYEES );
+    const clearOverlays = () => {
+      getElId("html").classList.add("console-hide");
+    }
   </script>
 </html>

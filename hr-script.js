@@ -31,22 +31,26 @@ class Util {
     return time;
   }
 
-  static businessUnitNames() {
-    const bus = EMPLOYEES.map(e => e.unitDisplayName);
-    c([...new Set(bus)]);
+  // dom element from template string
+  // https://gist.github.com/dfkaye/b78ff72ad125f917b93c08a63094c7ba
+  static makeEl(templateString, mimeType = "text/html") {
+    return (new DOMParser)
+      .parseFromString(templateString, mimeType)
+      .body
+      .firstElementChild;
   }
 
-  // uniquify array of hashes by keyname
-  static uniqueVals(arr, key) {
-    const vals = arr.map(a => a[key]);
-    //c('values:', vals);
-    return [...new Set(vals)];
-  }
 
   // log and return, useful for debugging
   static logRet(message, obj) {
     c(message, obj);
     return null;
+  }
+
+  // uniquify array of hashes by keyname
+  static uniqueVals(arr, key) {
+    const vals = arr.map(a => a[key]);
+    return [...new Set(vals)];
   }
 }
 
@@ -75,7 +79,9 @@ class Employee {
   }
 
   getManagers = () => {
-    if ( !this.mid.trim() ) return Util.logRet('getManagers: no managers', this.record);
+    if (!this.mid.trim()) {
+      return Util.logRet('getManagers: no managers', this.record);
+    }
     const managers = EMPLOYEES.filter((emp) => {
       if (emp.pid.trim() || this.mid.trim() !== '') {
         return emp.pid === this.mid;
@@ -97,48 +103,35 @@ class Employee {
     return result;
   }
 
-  getAllStaffs = (node = this) => {
-    if (node.reports.length === 0) return;
+  // renders EMPLOYEE node recursively
+  renderNodeTree = (node = this, childEl) => {
+    let nodeEl = this.makeNodeEl(node);
     if (node === this) {
-      //this.print(node);
+      nodeEl = this.makeNodeEl(node, "node employee-node");
+      getElId('console-body').append(nodeEl);
     }
-    this.print(node);
-    node.reports.forEach((r) => {
-      c(`${r.displayName} ${r.pid} reports to ${node.displayName}`);
-      this.print2(r, node);
-      if (r.reports.length > 0) {
-        this.getAllStaffs(r, node);
-      }
+    else childEl.append(nodeEl);
+
+    if (node.reports.length === 0) return;
+    node.reports.forEach((report) => {
+      const reportEl = this.makeNodeEl(report);
+      if (node.pid === report.pid) reportEl.append(nodeEl);
+      this.renderNodeTree(report, nodeEl);
     })
   }
 
-  print = (node) => {
+  makeNodeEl = (node, cssClass = "node") => {
     const markup = `
-      <hr>
-      <div class="node" id="${node.pid}">${node.displayName}</div>
+      <div class="${cssClass}" id="${'tree-' + node.pid}">
+        <a href="hr-tree.html?p=${node.pid}">
+          <div class="inner">
+            <span class="name">${node.displayName}</span>
+            <small>${node.jobTitle}</small>
+          </div>
+        </a>
+      </div>
     `
-    getElId('console').insertAdjacentHTML('beforeend', markup);
-  }
-
-  print2 = (node, pNode) => {
-    const markup = `
-      <div class="node" id="${node.pid}">> ${node.displayName}</div>
-    `
-    getElId('console').insertAdjacentHTML('beforeend', markup);
-  }
-
-  // Returns arrays of staff split by business `unitSlug`
-  // If manager has reports across business units
-  getStaffsByGroup = () => {
-    const staffs = EMPLOYEES.filter(emp => this.pid === emp.mid)
-    if (staffs.length < 1) return Util.logRet('getStaffsByGroup: no staff', staffs);
-    let reduce = staffs.reduce((group, s) => {
-      const { unitSlug } = s;
-      group[unitSlug] = group[unitSlug] ?? [];
-      group[unitSlug].push(new Employee(s.slug));
-      return group;
-    }, {});
-    return Object.values(reduce);
+    return Util.makeEl(markup);
   }
 }
 
@@ -151,23 +144,22 @@ class Employee {
  * - render staffs
  */
 
-// constant-ish
+// expose global "constants" ¯\_(ツ)_/¯
 let EMPLOYEES;
 let EMPLOYEE;
 
 const START = Util.timing();
 const queryString = window.location.search;
-const urlParams = new URLSearchParams( queryString );
+const urlParams = new URLSearchParams(queryString);
 const p = urlParams.get('p'); // slug
 
 const Page = ({
   init: function(employees) {
     EMPLOYEES = this.constructEmployees(employees);
-    EMPLOYEES = this.enhanceEmployees(EMPLOYEES);
-
+    EMPLOYEES = this.addReports(EMPLOYEES);
     Util.timing(START, 'add reports');
 
-    // person check
+    // person query string check
     if (!p) return this.coldStart('No person');
 
     // employee validation check
@@ -175,29 +167,31 @@ const Page = ({
     if (!EMPLOYEE.record) return this.coldStart('Employee not found');
 
     const managers = EMPLOYEE.getManagers();
-    //const staffGroups = EMPLOYEE.getStaffsByGroup();
     const staffs = EMPLOYEE.getStaffs();
     this.renderManagers(managers);
     this.renderEmployee();
-    //this.renderStaffGroups(staffGroups);
     this.renderStaffs(staffs);
-  },
-
-  makeUrl: function() {
-    // p: slug
+    this.instrumentPage();
+    Util.timing(START, 'finish page init');
   },
 
   constructEmployees: function(employees) {
     const restructure = (emp) => {
       // dasherize keys
-      const pid = Util.dasherize(emp["Position ID"]);
-      const mid = Util.dasherize(emp["Reports To Position ID"]);
-      const slug = Util.dasherize(emp["HR First Name Lower Case"] + ' ' +  emp["HR Last Name Lower Case"]);
-      const unitSlug = Util.dasherize(emp["HR Company Code Division"]);
-      const fname = emp["Preferred First Name"] ?  emp["Preferred First Name"] : emp["HR First Name Lower Case"];
-      const lname = emp["Preferred Last Name"] ?  emp["Preferred Last Name"] : emp["HR Last Name Lower Case"];
+      const pid         = Util.dasherize(emp["Position ID"]);
+      const mid         = Util.dasherize(emp["Reports To Position ID"]);
+      const slug        = Util.dasherize(emp["HR First Name Lower Case"]
+                          + ' '
+                          + emp["HR Last Name Lower Case"]);
+      const unitSlug    = Util.dasherize(emp["HR Company Code Division"]);
+      const fname       = emp["Preferred First Name"]
+                          ? emp["Preferred First Name"]
+                          : emp["HR First Name Lower Case"];
+      const lname       = emp["Preferred Last Name"]
+                          ? emp["Preferred Last Name"]
+                          : emp["HR Last Name Lower Case"];
       const displayName = fname + ' ' + lname;
-      const reports = []
+      const reports     = []
 
       // destructure to js conforming key names
       const {
@@ -205,8 +199,6 @@ const Page = ({
         "HR Last Name Lower Case": lastName,
         "Job Title Description": jobTitle,
         "HR Company Code Division": unitDisplayName,
-        //"Primary Address: City": city,
-        //"Primary Address: State / Territory Description": state,
         "Work Contact: Work Email": email,
         ...zzz
       } = emp
@@ -222,36 +214,23 @@ const Page = ({
         jobTitle,
         unitSlug,
         unitDisplayName,
-        //city,
-        //state,
         email,
         reports
-        //zzz
       }
     }
     return employees.map(restructure);
   },
 
-  enhanceEmployees: function(employees) {
-    //let es = employees.filter(emp => emp.mid !== "")
-    let es = employees;
-    es.forEach((e) => {
-      if (e.mid === "") return;
-      es.forEach((m) => {
-        if (e.mid == m.pid) { m.reports.push(e) }
+  // invert "Reports To Position ID"
+  addReports: function(employees) {
+    let emps = employees;
+    emps.forEach((emp) => {
+      if (emp.mid === "") return;
+      emps.forEach((mgr) => {
+        if (emp.mid == mgr.pid) { mgr.reports.push(emp) }
       })
     })
-    return es;
-  },
-
-  coldStart: function(...stuff) {
-    c(stuff);
-    getElId('html').classList.add('cold-start-mode');
-
-    //const random = Math.floor(Math.random() * EMPLOYEES.length);
-    //const emp = EMPLOYEES[random];
-    //const a = getElId('random-employee-link')
-
+    return emps;
   },
 
   renderManagers: function(managers) {
@@ -273,6 +252,9 @@ const Page = ({
     <div id="poi-block" class="block flex">
       <div class="poi-card">
         <h1 id="poi">${EMPLOYEE.displayName}</h1>
+        <div id="console-toggle" class="console-toggle">
+          <small class="tooltip">View org tree for ${EMPLOYEE.displayName}</small>
+        </div>
         <p id="poi-job-title">${EMPLOYEE.jobTitle}</p>
         <small>${emailMarkup}</small>
       </div>
@@ -282,29 +264,6 @@ const Page = ({
     //c('renderEmployee: done', EMPLOYEE);
   },
 
-  //renderStaffGroups: function(staffGroups) {
-  //  if (!staffGroups) return;
-  //  staffGroups.forEach((staffs) => {
-  //    let unitSlug = Util.uniqueVals(staffs, 'unitSlug')[0];
-  //    let unitName = Util.uniqueVals(staffs, 'unitDisplayName')[0];
-  //    let innerMarkup = '';
-  //    let markup = '';
-  //    staffs.forEach((employee) => {
-  //      innerMarkup += this.renderEmployeeCard(employee);
-  //    });
-  //    markup = `
-  //      <div class="show">
-  //        <h2>${unitName}</h2>
-  //        <div id="${unitSlug}" class="cards">
-  //          ${innerMarkup}
-  //        </div>
-  //      </div>
-  //    `
-  //    getElId('reports-container').insertAdjacentHTML('beforeend', markup);
-  //  });
-  //  //c('renderStaffGroups: done', staffGroups);
-  //},
-
   renderStaffs: function(staffs) {
     if (!staffs) return;
     staffs.forEach((staff) => {
@@ -312,17 +271,55 @@ const Page = ({
       getElId('reports-block').classList.remove('hide');
       getElId('reports-container').insertAdjacentHTML('beforeend', markup);
     });
-    //c('renderStaffGroups: done', staffGroups);
   },
 
   renderEmployeeCard: function(employee) {
     return markup = `
-      <div id="${employee.pid}" class="card">
-        <a href="hr-tree.html?p=${employee.pid}" class="name">
-          ${employee.displayName}
+      <div id="${employee.pid}">
+        <a href="hr-tree.html?p=${employee.pid}" class="card">
+          <div class="name">${employee.displayName}</div>
+          <small>${employee.jobTitle}</small>
         </a>
-        <small>${employee.jobTitle}</small>
       </div>
     `
+  },
+
+  coldStart: function(...stuff) {
+    c(stuff);
+    getElId('html').classList.add('cold-start-mode');
+    //const random = Math.floor(Math.random() * EMPLOYEES.length);
+    //const emp = EMPLOYEES[random];
+    //const a = getElId('random-employee-link')
+  },
+
+  instrumentPage: function() {
+    // click logo to go home
+    const homeLogo = getElId("logo");
+    homeLogo.addEventListener("click", () => {
+      window.location.replace("hr-tree.html");
+    })
+
+    // don't instrument anything below if no employee
+    if (!EMPLOYEE) return;
+
+    // pre-render node tree
+    EMPLOYEE.renderNodeTree()
+
+    // toggle node tree console
+    const htmlEl = getElId("html");
+    const consoleToggle = getElId("console-toggle");
+    const consoleClose = getElId("console-close");
+    const modalCurtain = getElId("modal-curtain");
+    [consoleToggle, consoleClose, modalCurtain].forEach(item => {
+      item.addEventListener("click", () => {
+        htmlEl.classList.toggle("console-hide");
+      })
+    })
+
+    // add console title
+    getElId("console-title").prepend(Util.makeEl(`
+      <h2>Org Tree for ${EMPLOYEE.displayName}</h2>
+      `
+    ))
   }
 })
