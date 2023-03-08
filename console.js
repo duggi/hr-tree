@@ -12,7 +12,7 @@ const help = () => {
   `
 
   const body = `
-"Ehpelsuw" is a fictional company with 2,609 employees. Their org chart is described by a directional graph, where \`Reports To Position ID\` points to the manager of a given employee.
+"Plus Aire" is a fictional company with 2,609 employees. Their org chart is described by a graph, where \`Reports To Position ID\` points to the manager of a given employee.
 
 For purposes of this demo, names have been obfuscated by \`_lib/jsonmask\`
 
@@ -25,7 +25,7 @@ For purposes of this demo, names have been obfuscated by \`_lib/jsonmask\`
 · Must be searchable by employee name
 · Must display employee's manager and any direct reports
 · Must be traversable by clicking manager or reports
-. Must be completed in a single work week timeline
+. Must be completed in a tight timeline (one week)
 
 
 ----- DESIGN -----
@@ -35,7 +35,7 @@ For purposes of this demo, names have been obfuscated by \`_lib/jsonmask\`
 · Updatable with new data by placing an Excel or csv file into a shared directory
   · If an Excel file is placed, it is converted to csv
   · Incremental data file must conform to column names
-  · Csv data file is converted to json, then assigned to a JavaScript variable
+  · CSV data file is converted to JSON, then assigned to a JavaScript variable
 · Main script contains three classes:
   1. Util       # static utility and convenience functions
   2. Employee   # instantiates employee objects from data file

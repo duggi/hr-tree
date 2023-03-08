@@ -1,7 +1,9 @@
-// sugar
+/*
+ * Sugar
+ */
+
 const getElId = document.getElementById.bind(document);
 const c = console.log.bind(window);
-
 
 
 /*
@@ -32,14 +34,12 @@ class Util {
   }
 
   // dom element from template string
-  // https://gist.github.com/dfkaye/b78ff72ad125f917b93c08a63094c7ba
   static makeEl(templateString, mimeType = "text/html") {
     return (new DOMParser)
       .parseFromString(templateString, mimeType)
       .body
       .firstElementChild;
   }
-
 
   // log and return, useful for debugging
   static logRet(message, obj) {
