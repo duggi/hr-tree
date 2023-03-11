@@ -84,6 +84,7 @@ body::-webkit-scrollbar-thumb {
   left: 0;
   outline: 0;
   background: rgba(0 0 0 / 60%);
+  z-index: 900;
   transition: .5s all;
 }
 
@@ -570,7 +571,6 @@ html.cold-start-mode .cold-start * {
 }
 
 html.cold-start-mode .body-content-wrapper {
-  padding: 0;
   overflow: hidden;
 }
 
