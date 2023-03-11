@@ -44,7 +44,7 @@ For purposes of this demo, names have been obfuscated by \`_lib/jsonmask\`
 
 
   console.log(`%c${header} %c${body}`,
-    "color: #ff0;", "color: #eee;");
+    "color: #b3e", "color:");
 }
 
 help();
